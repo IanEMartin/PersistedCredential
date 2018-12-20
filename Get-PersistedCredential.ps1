@@ -40,19 +40,29 @@ function Get-PersistedCredential {
     }
     if ($null -ne $Domain -and '' -ne $Domain) {
       $Files = Get-ChildItem -Path $env:LOCALAPPDATA -Filter "*.Clixml*" -File
-      $filename = $Files | Where-Object { $_.Name -match "_$Domain.Clixml" } | Select-Object -ExpandProperty FullName
-      if ($null -ne $filename) {
-        $Cred = Import-Clixml $filename
+      $File = $Files | Where-Object { $_.Name -match "_$Domain.Clixml" } | Select-Object FullName, LastWriteTime
+      if ($null -ne $File) {
+        $Cred = Import-Clixml $File.FullName
+        $Days = (New-TimeSpan -Start $File.LastWriteTime -End (Get-Date)).Days
+        if ($Days -ge 30) {
+          Write-Warning -Message ('[{0}] Persisted Credential is {1} days old.  You should remove or update it.' -f $Cred.UserName, $Days)
+        }
       }
     }
     if ($List) {
       $PersistedCreds = @()
       $Files = Get-ChildItem -Path $env:LOCALAPPDATA -Filter "*.Clixml" -File
-      $Files = $Files | Where-Object { $_.Name -match "_?.Clixml" } | Select-Object -ExpandProperty FullName
+      $Files = $Files | Where-Object { $_.Name -match "_?.Clixml" } | Select-Object FullName, LastWriteTime
       if ($null -ne $Files) {
         foreach ($File in $Files) {
-          $Cred = Import-Clixml $File
-          $PersistedCreds += $Cred.UserName
+          $Cred = Import-Clixml $File.FullName
+
+          $PCred = New-Object PSObject
+          Add-Member -InputObject $PCred -MemberType NoteProperty -Name UserName -Value $Cred.UserName
+          Add-Member -InputObject $PCred -MemberType NoteProperty -Name LastWriteTime -Value $File.LastWriteTime
+          Add-Member -InputObject $PCred -MemberType NoteProperty -Name AgeInDays -Value (New-TimeSpan -Start $File.LastWriteTime -End (Get-Date)).Days
+
+          $PersistedCreds += $PCred
         }
         $PersistedCreds
         Write-Host
