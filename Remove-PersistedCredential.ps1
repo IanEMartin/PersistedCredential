@@ -26,7 +26,7 @@ function Remove-PersistedCredential {
       $filename = $Files | Where-Object { $_.Name -match "_$Domain.Clixml" } | Select-Object -ExpandProperty FullName
       if ($null -ne $filename) {
         $Cred = Import-Clixml $filename
-        Remove-Item -Path $env:LOCALAPPDATA\$filename.clixml -Force
+        Remove-Item -Path $filename -Force
       } else {
         Throw ('Cannot remove persisted credential with domain ''{0}'' because it does not exist.' -f $Domain)
       }
